@@ -925,7 +925,6 @@
               <select id="dashboard-user-role" aria-label="Role">
                 <option value="Staff">Staff</option>
                 <option value="Administrator">Administrator</option>
-                <option value="Viewer">Viewer</option>
               </select>
               <select id="dashboard-user-status" aria-label="Status">
                 <option value="Active">Active</option>
@@ -1218,9 +1217,9 @@
           ? accounts.find((entry) => String(entry.username || "").toLowerCase() === username.toLowerCase())
           : null;
         const pageRole = new URLSearchParams(window.location.search).get("role");
-        const role = pageRole === "Staff" || pageRole === "Viewer"
-          ? pageRole
-          : account?.role || user.role || (username.toLowerCase() === "admin" ? "Administrator" : "Staff");
+        const allowedPageRole = pageRole === "Staff" || pageRole === "Administrator" ? pageRole : null;
+        const resolvedRole = allowedPageRole || account?.role || user.role || (username.toLowerCase() === "admin" ? "Administrator" : "Staff");
+        const role = resolvedRole === "Administrator" ? "Administrator" : "Staff";
         return { username, role };
       } catch {
         return { username: "ADMIN", role: "Administrator" };
@@ -1602,8 +1601,8 @@
       const roleInput = document.getElementById("dashboard-user-role");
       const statusInput = document.getElementById("dashboard-user-status");
       const message = document.getElementById("dashboard-user-message");
-      const isViewer = getCurrentUser().role === "Viewer";
-      if (isViewer) {
+      const isReadOnly = getCurrentUser().role === "Staff";
+      if (isReadOnly) {
         document.getElementById("dashboard-add-user").hidden = true;
         form.hidden = true;
         document.getElementById("dashboard-user-action-heading").hidden = true;
@@ -1657,13 +1656,13 @@
             <td>${escapeUserValue(user.role)}</td>
             <td><span class="status-badge ${user.status.toLowerCase()}">${escapeUserValue(user.status)}</span></td>
             <td>${escapeUserValue(user.lastLogin)}</td>
-            ${isViewer ? "" : `<td class="user-actions">
+            ${isReadOnly ? "" : `<td class="user-actions">
               <button type="button" data-user-action="edit" data-username="${escapeUserValue(user.username)}">Edit</button>
               <button type="button" data-user-action="toggle" data-username="${escapeUserValue(user.username)}">${actionLabel}</button>
               <button type="button" class="delete-btn" data-user-action="delete" data-username="${escapeUserValue(user.username)}" ${onlyAdministrator ? "disabled title=\"Keep at least one administrator\"" : ""}>Delete</button>
             </td>`}
           </tr>`;
-        }).join("") : `<tr><td colspan="${isViewer ? 4 : 5}" class="empty-state">No users yet.</td></tr>`;
+        }).join("") : `<tr><td colspan="${isReadOnly ? 4 : 5}" class="empty-state">No users yet.</td></tr>`;
         saveUsers();
       }
 
@@ -1674,7 +1673,7 @@
         passwordInput.required = false;
       }
 
-      if (!isViewer) {
+      if (!isReadOnly) {
         document.getElementById("dashboard-add-user").addEventListener("click", () => {
           resetUserForm();
           form.hidden = false;
